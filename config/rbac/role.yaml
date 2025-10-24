@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails/status
+  verbs:
+  - get
+  - patch
+  - update
