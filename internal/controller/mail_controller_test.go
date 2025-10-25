@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mailv1alpha1 "github.com/circa10a/postk8s/api/v1alpha1"
+	mailformv1alpha1 "github.com/circa10a/postk8s/api/v1alpha1"
 )
 
 var _ = Describe("Mail Controller", func() {
@@ -40,13 +40,13 @@ var _ = Describe("Mail Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		mail := &mailv1alpha1.Mail{}
+		mail := &mailformv1alpha1.Mail{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Mail")
 			err := k8sClient.Get(ctx, typeNamespacedName, mail)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &mailv1alpha1.Mail{
+				resource := &mailformv1alpha1.Mail{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +59,7 @@ var _ = Describe("Mail Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &mailv1alpha1.Mail{}
+			resource := &mailformv1alpha1.Mail{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

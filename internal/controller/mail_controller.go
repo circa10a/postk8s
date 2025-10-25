@@ -25,19 +25,22 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	mailv1alpha1 "github.com/circa10a/postk8s/api/v1alpha1"
+	mailform "github.com/circa10a/go-mailform"
+	mailformv1alpha1 "github.com/circa10a/postk8s/api/v1alpha1"
 )
 
 // MailReconciler reconciles a Mail object
 type MailReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	MailformClient *mailform.Client
+	Scheme         *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=mail.circa10a.github.io,resources=mails,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=mail.circa10a.github.io,resources=mails/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=mail.circa10a.github.io,resources=mails/finalizers,verbs=update
+// +kubebuilder:rbac:groups=mailform.circa10a.github.io,resources=mails,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=mailform.circa10a.github.io,resources=mails/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=mailform.circa10a.github.io,resources=mails/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -45,7 +48,7 @@ func (r *MailReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	log := logf.FromContext(ctx)
 
 	// 1) Load the Mail object
-	mail := &mailv1alpha1.Mail{}
+	mail := &mailformv1alpha1.Mail{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, mail); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object was deleted after reconcile request — nothing to do
@@ -74,7 +77,8 @@ func (r *MailReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *MailReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mailv1alpha1.Mail{}).
+		For(&mailformv1alpha1.Mail{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Named("mail").
 		Complete(r)
 }

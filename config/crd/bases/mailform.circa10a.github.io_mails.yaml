@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: mails.mail.circa10a.github.io
+  name: mails.mailform.circa10a.github.io
 spec:
-  group: mail.circa10a.github.io
+  group: mailform.circa10a.github.io
   names:
     kind: Mail
     listKind: MailList
