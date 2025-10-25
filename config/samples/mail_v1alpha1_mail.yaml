@@ -6,4 +6,22 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: mail-sample
 spec:
-  # TODO(user): Add fields here
+  service: test
+  from:
+    name: "Sender Name"
+    organization: "Acme Sender"
+    address1: "123 Sender St"
+    address2: "Suite 100"
+    city: "Senderville"
+    state: "CA"
+    postcode: "94016"
+    country: "US"
+  to:
+    name: "Recipient Name"
+    organization: "Acme Recipient"
+    address1: "456 Recipient Ave"
+    address2: "Apt 4B"
+    city: "Receivertown"
+    state: "NY"
+    postcode: "10001"
+    country: "US"

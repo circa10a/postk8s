@@ -13,10 +13,11 @@
 - Access to a Kubernetes v1.11.3+ cluster.
 
 ### To Deploy on the cluster
+
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/postk8s:tag
+make docker-build docker-push IMG=circa10a/postk8s
 ```
 
 **NOTE:** This image ought to be published in the personal registry you specified.
@@ -32,7 +33,7 @@ make install
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
 
 ```sh
-make deploy IMG=<some-registry>/postk8s:tag
+make deploy IMG=circa10a/postk8s
 ```
 
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin

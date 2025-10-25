@@ -35,6 +35,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	mailv1alpha1 "github.com/circa10a/postk8s/api/v1alpha1"
 	"github.com/circa10a/postk8s/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -46,6 +47,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(mailv1alpha1.AddToScheme(scheme))
+	// +kubebuilder:scaffold:scheme
 }
 
 // nolint:gocyclo

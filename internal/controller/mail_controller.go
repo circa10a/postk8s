@@ -19,7 +19,9 @@ package controller
 import (
 	"context"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -41,9 +43,30 @@ type MailReconciler struct {
 // move the current state of the cluster closer to the desired state.
 func (r *MailReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.Info("Wassup")
 
-	// TODO(user): your logic here
+	// 1) Load the Mail object
+	mail := &mailv1alpha1.Mail{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, mail); err != nil {
+		if apierrors.IsNotFound(err) {
+			// object was deleted after reconcile request — nothing to do
+			return ctrl.Result{}, nil
+		}
+		// transient error reading the object
+		return ctrl.Result{}, err
+	}
+
+	// 2) Inspect spec fields
+	log.Info("Got Mail", "service", mail.Spec.Service, "customerRef", mail.Spec.CustomerReference)
+
+	// Example: set status and update it
+	mail.Status.State = "Processed"
+	mail.Status.Sent = false
+
+	// Update status; handle conflicts by requeuing (or use retry.RetryOnConflict for more control)
+	if err := r.Status().Update(ctx, mail); err != nil {
+		// if conflict or temporary error, requeue to try again
+		return ctrl.Result{Requeue: true}, err
+	}
 
 	return ctrl.Result{}, nil
 }
