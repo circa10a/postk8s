@@ -1,19 +1,3 @@
-/*
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package v1alpha1
 
 import (
@@ -22,42 +6,52 @@ import (
 
 // Address defines the fields required to send Mail
 type Address struct {
+	// +kubebuilder:validation:Required
 	Name         string `json:"name"`
 	Organization string `json:"organization,omitempty"`
-	Address1     string `json:"address1"`
-	Address2     string `json:"address2,omitempty"`
-	City         string `json:"city"`
-	State        string `json:"state"`
-	Postcode     string `json:"postcode"`
-	Country      string `json:"country"`
+	// +kubebuilder:validation:Required
+	Address1 string `json:"address1"`
+	Address2 string `json:"address2,omitempty"`
+	// +kubebuilder:validation:Required
+	City string `json:"city"`
+	// +kubebuilder:validation:Required
+	State string `json:"state"`
+	// +kubebuilder:validation:Required
+	Postcode string `json:"postcode"`
+	// +kubebuilder:validation:Required
+	Country string `json:"country"`
 }
 
 // MailSpec defines the desired state of Mail
 type MailSpec struct {
-	FilePath          string  `json:"filePath,omitempty"`
-	URL               string  `json:"url,omitempty"`
-	CustomerReference string  `json:"customerReference,omitempty"`
-	Service           string  `json:"service"`
-	Webhook           string  `json:"webhook,omitempty"`
-	Company           string  `json:"company,omitempty"`
-	Simplex           bool    `json:"simplex,omitempty"`
-	Color             bool    `json:"color,omitempty"`
-	Flat              bool    `json:"flat,omitempty"`
-	Stamp             bool    `json:"stamp,omitempty"`
-	Message           string  `json:"message,omitempty"`
-	To                Address `json:"to"`
-	From              Address `json:"from"`
+	FilePath          string `json:"filePath,omitempty"`
+	URL               string `json:"url,omitempty"`
+	CustomerReference string `json:"customerReference,omitempty"`
+	// +kubebuilder:validation:Required
+	Service string `json:"service"`
+	Webhook string `json:"webhook,omitempty"`
+	Company string `json:"company,omitempty"`
+	Simplex bool   `json:"simplex,omitempty"`
+	Color   bool   `json:"color,omitempty"`
+	Flat    bool   `json:"flat,omitempty"`
+	Stamp   bool   `json:"stamp,omitempty"`
+	Message string `json:"message,omitempty"`
+	// +kubebuilder:validation:Required
+	To *Address `json:"to,omitempty"`
+	// +kubebuilder:validation:Required
+	From *Address `json:"from,omitempty"`
 }
 
 // MailStatus defines the observed state of Mail.
 type MailStatus struct {
-	ID                 string       `json:"id,omitempty"`
-	State              string       `json:"state,omitempty"`
-	Total              int          `json:"total,omitempty"`
-	Created            *metav1.Time `json:"created,omitempty"`
-	Modified           *metav1.Time `json:"modified,omitempty"`
-	LastAttemptMessage string       `json:"lastAttemptMessage,omitempty"`
-	Sent               bool         `json:"sent"`
+	ID                 string      `json:"id,omitempty"`
+	State              string      `json:"state,omitempty"`
+	Sent               bool        `json:"sent"`
+	Total              int         `json:"total,omitempty"`
+	Created            metav1.Time `json:"created,omitempty"`
+	Modified           metav1.Time `json:"modified,omitempty"`
+	Cancelled          metav1.Time `json:"cancelled,omitempty"`
+	CancellationReason string      `json:"cancellationReason,omitempty"`
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }

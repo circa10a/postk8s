@@ -6,6 +6,9 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: mail-sample
 spec:
+  message: "Hello, this is a test mail sent via PostK8s!"
+  service: USPS_PRIORITY
+  url: https://pdfobject.com/pdf/sample.pdf
   from:
     address1: 123 Sender St
     address2: Suite 100
@@ -15,7 +18,6 @@ spec:
     organization: Acme Sender
     postcode: "94016"
     state: CA
-  service: test
   to:
     address1: 456 Recipient Ave
     address2: Apt 4B

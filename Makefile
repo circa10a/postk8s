@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= circa10a/postk8s
+IMG ?= circa10a/postk8s:latest
 
 # Custom params added after kubebuilder
 DOCKER_LOCAL_TAR_OUTPUT=postk8s_amd64.tar
@@ -46,6 +46,9 @@ help: ## Display this help.
 
 # Build docker image, load it locally, generate/install CRDs, kubectl apply
 local: docker-local install deploy
+
+sample:
+	$(KUBECTL) apply -k config/samples/
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -123,11 +126,11 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	$(CONTAINER_TOOL) build -t $(IMG) .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
-	$(CONTAINER_TOOL) push ${IMG}
+	$(CONTAINER_TOOL) push $(IMG)
 
 # This is to load the local image so we don't need to push + pull to deploy for docker for mac k8s integration
 docker-local: docker-build
@@ -147,14 +150,14 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- $(CONTAINER_TOOL) buildx create --name postk8s-builder
 	$(CONTAINER_TOOL) buildx use postk8s-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag $(IMG)-f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm postk8s-builder
 	rm Dockerfile.cross
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/default > dist/install.yaml
 
 ##@ Deployment
@@ -175,8 +178,20 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	@command -v envsubst >/dev/null 2>&1 || { \
+		echo "Error: envsubst is required but not installed. Please install gettext package."; \
+		exit 1; \
+	}
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	$(KUSTOMIZE) build config/default | envsubst | $(KUBECTL) apply -f -
+	@deploys=$$(kubectl get deployments --no-headers | tail -n1 | awk '{print $$1}'); \
+	if [ -n "$$deploys" ]; then \
+		for deploy in $$deploys; do \
+			kubectl rollout restart deployment/$$deploy; \
+		done; \
+	else \
+		echo "No deployments found."; \
+	fi
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

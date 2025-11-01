@@ -5,3 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: circa10a/postk8s
+  newTag: latest

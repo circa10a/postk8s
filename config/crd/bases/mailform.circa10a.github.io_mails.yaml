@@ -123,6 +123,11 @@ spec:
           status:
             description: status defines the observed state of Mail
             properties:
+              cancellationReason:
+                type: string
+              cancelled:
+                format: date-time
+                type: string
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current
@@ -183,8 +188,6 @@ spec:
                 format: date-time
                 type: string
               id:
-                type: string
-              lastAttemptMessage:
                 type: string
               modified:
                 format: date-time

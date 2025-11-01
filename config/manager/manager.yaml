@@ -40,9 +40,12 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: controller:latest
-        imagePullPolicy: Always
+        image: circa10a/postk8s:latest
+        imagePullPolicy: Never
         name: manager
+        env:
+          - name: MAILFORM_API_TOKEN
+            value: ${MAILFORM_API_TOKEN}
         ports: []
         securityContext:
           readOnlyRootFilesystem: true
