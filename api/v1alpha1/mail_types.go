@@ -45,8 +45,9 @@ type MailSpec struct {
 // MailStatus defines the observed state of Mail.
 type MailStatus struct {
 	ID                 string      `json:"id,omitempty"`
-	State              string      `json:"state,omitempty"`
+	State              string      `json:"state"`
 	Sent               bool        `json:"sent"`
+	Valid              bool        `json:"valid"`
 	Total              int         `json:"total,omitempty"`
 	Created            metav1.Time `json:"created,omitempty"`
 	Modified           metav1.Time `json:"modified,omitempty"`

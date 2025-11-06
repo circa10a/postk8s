@@ -18,20 +18,24 @@ import (
 	mailformv1alpha1 "github.com/circa10a/postk8s/api/v1alpha1"
 )
 
+// MailformIface is an interface to Create/Get orders from Mailform.
+type MailformIface interface {
+	CreateOrder(o mailform.OrderInput) (*mailform.Order, error)
+	GetOrder(o string) (*mailform.Order, error)
+}
+
 // MailReconciler reconciles a Mail object
 type MailReconciler struct {
 	client.Client
-	MailformClient *mailform.Client
+	MailformClient MailformIface
 	Scheme         *runtime.Scheme
 	SyncInterval   time.Duration
 }
 
 // Definitions to manage status conditions
 const (
-	// typeValidationMail represents the status of the Mail validation
-	typeValidationMail = "Validation"
 	// typeValidationMail represents the status of the Mail fuilfillment
-	typeFulfillmentMail = "Fuilfillment"
+	typeFulfillmentMail = "Fulfillment"
 )
 
 // +kubebuilder:rbac:groups=mailform.circa10a.github.io,resources=mails,verbs=get;list;watch;create;update;patch;delete
@@ -54,23 +58,40 @@ func (r *MailReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// Nothing to do if mail is already sent or cancelled
 	if mail.Status.Sent || mail.Status.State == mailform.StatusCancelled {
-		log.Info("order sent/cancelled", "orderID", mail.Status.ID)
+		log.Info("order sent/cancelled", "name", req.Name, "orderID", mail.Status.ID)
 		return ctrl.Result{}, nil
+	}
+
+	orderInput := r.buildOrderInput(mail)
+	err = orderInput.Validate()
+
+	if err != nil {
+		log.Error(err, "mail spec invalid, skipping reconciliation", "name", req.Name)
+		return ctrl.Result{}, err
+	}
+
+	// Mailspec is valid let's ensure it's updated only once
+	if !mail.Status.Valid {
+		mail.Status.Valid = true
+		err = r.Status().Update(ctx, mail)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Create order if it doesn't exist
 	if mail.Status.ID == "" {
-		orderID, err := r.createOrder(ctx, mail)
+		orderID, err := r.createOrder(ctx, mail, &orderInput)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		log.Info("created mail order", "orderID", orderID)
+		log.Info("created mail order", "name", req.Name, "orderID", orderID)
 	}
 
 	// Get order details
 	order, err := r.fetchOrder(mail.Status.ID)
 	if err != nil {
-		log.Error(err, "error fetching order", "orderID", mail.Status.ID)
+		log.Error(err, "error fetching order", "name", req.Name, "orderID", mail.Status.ID)
 		return ctrl.Result{}, err
 	}
 
@@ -81,6 +102,7 @@ func (r *MailReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	log.Info("got status from order, requeuing",
+		"name", req.Name,
 		"orderID", mail.Status.ID,
 		"state", mail.Status.State,
 		"sent", mail.Status.Sent,
@@ -144,28 +166,8 @@ func (r *MailReconciler) buildOrderInput(mail *mailformv1alpha1.Mail) mailform.O
 }
 
 // createOrder with create an order.
-func (r *MailReconciler) createOrder(ctx context.Context, mail *mailformv1alpha1.Mail) (string, error) {
-	orderInput := r.buildOrderInput(mail)
-	err := orderInput.Validate()
-	if err != nil {
-		// persist validation failure in status and stop reconciling
-		meta.SetStatusCondition(&mail.Status.Conditions, metav1.Condition{
-			Type:               typeValidationMail,
-			Status:             metav1.ConditionFalse,
-			Reason:             "ValidationFailed",
-			Message:            err.Error(),
-			LastTransitionTime: metav1.Now(),
-		})
-
-		err2 := r.Status().Update(ctx, mail)
-		if err2 != nil {
-			return "", err
-		}
-
-		return "", err2
-	}
-
-	order, err := r.MailformClient.CreateOrder(orderInput)
+func (r *MailReconciler) createOrder(ctx context.Context, mail *mailformv1alpha1.Mail, orderInput *mailform.OrderInput) (string, error) {
+	order, err := r.MailformClient.CreateOrder(*orderInput)
 	if err != nil {
 		return "", err
 	}
@@ -187,8 +189,8 @@ func (r *MailReconciler) fetchOrder(orderID string) (*mailform.Order, error) {
 
 // updateStatusFromOrder maps the external order into Mail.Status and persists it.
 func (r *MailReconciler) updateStatusFromOrder(ctx context.Context, mail *mailformv1alpha1.Mail, order *mailform.Order) error {
-	mail.Status.State = order.Data.State
 	mail.Status.Sent = order.Data.State == mailform.StatusFulfilled
+	mail.Status.State = order.Data.State
 	mail.Status.Total = order.Data.Total
 	mail.Status.Created = metav1.NewTime(order.Data.Created)
 	mail.Status.Modified = metav1.NewTime(order.Data.Modified)
@@ -196,14 +198,6 @@ func (r *MailReconciler) updateStatusFromOrder(ctx context.Context, mail *mailfo
 	mail.Status.CancellationReason = order.Data.CancellationReason
 
 	now := metav1.Now()
-
-	meta.SetStatusCondition(&mail.Status.Conditions, metav1.Condition{
-		Type:               typeValidationMail,
-		Status:             metav1.ConditionTrue,
-		Reason:             "ValidationPassed",
-		Message:            "Mail spec validated successfully",
-		LastTransitionTime: now,
-	})
 
 	if mail.Status.Sent {
 		meta.SetStatusCondition(&mail.Status.Conditions, metav1.Condition{

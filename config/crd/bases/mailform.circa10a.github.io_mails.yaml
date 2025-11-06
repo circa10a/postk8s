@@ -198,8 +198,12 @@ spec:
                 type: string
               total:
                 type: integer
+              valid:
+                type: boolean
             required:
             - sent
+            - state
+            - valid
             type: object
         required:
         - spec
