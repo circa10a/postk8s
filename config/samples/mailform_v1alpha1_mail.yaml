@@ -1,0 +1,31 @@
+apiVersion: mailform.circa10a.github.io/v1alpha1
+kind: Mail
+metadata:
+  annotations:
+    mailform.circa10a.github.io/skip-cancellation-on-delete: "true"
+  labels:
+    app.kubernetes.io/name: postk8s
+    app.kubernetes.io/managed-by: kustomize
+  name: mail-sample
+spec:
+  message: "Hello, this is a test mail sent via PostK8s!"
+  service: USPS_STANDARD
+  url: https://pdfobject.com/pdf/sample.pdf
+  from:
+    address1: 123 Sender St
+    address2: Suite 100
+    city: Senderville
+    country: US
+    name: Sender Name
+    organization: Acme Sender
+    postcode: "94016"
+    state: CA
+  to:
+    address1: 456 Recipient Ave
+    address2: Apt 4B
+    city: Receivertown
+    country: US
+    name: Recipient Name
+    organization: Acme Recipient
+    postcode: "10001"
+    state: NY

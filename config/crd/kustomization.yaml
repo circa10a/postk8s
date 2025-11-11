@@ -2,7 +2,7 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/mail.circa10a.github.io_mails.yaml
+- bases/mailform.circa10a.github.io_mails.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

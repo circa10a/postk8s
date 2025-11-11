@@ -5,7 +5,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - mail.circa10a.github.io
+  - mailform.circa10a.github.io
   resources:
   - mails
   verbs:
@@ -17,13 +17,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - mail.circa10a.github.io
+  - mailform.circa10a.github.io
   resources:
   - mails/finalizers
   verbs:
   - update
 - apiGroups:
-  - mail.circa10a.github.io
+  - mailform.circa10a.github.io
   resources:
   - mails/status
   verbs:

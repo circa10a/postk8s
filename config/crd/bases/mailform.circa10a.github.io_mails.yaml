@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: mails.mail.circa10a.github.io
+  name: mails.mailform.circa10a.github.io
 spec:
-  group: mail.circa10a.github.io
+  group: mailform.circa10a.github.io
   names:
     kind: Mail
     listKind: MailList
@@ -123,6 +123,11 @@ spec:
           status:
             description: status defines the observed state of Mail
             properties:
+              cancellationReason:
+                type: string
+              cancelled:
+                format: date-time
+                type: string
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current
@@ -184,8 +189,6 @@ spec:
                 type: string
               id:
                 type: string
-              lastAttemptMessage:
-                type: string
               modified:
                 format: date-time
                 type: string
@@ -195,8 +198,12 @@ spec:
                 type: string
               total:
                 type: integer
+              valid:
+                type: boolean
             required:
             - sent
+            - state
+            - valid
             type: object
         required:
         - spec

@@ -1,135 +1,118 @@
-# postk8s
-// TODO(user): Add simple overview of use/purpose
+# 📬 postk8s
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A simple kubernetes operator to manage physical mail via [mailform.io](https://www.mailform.io/)
 
-## Getting Started
+![Build Status](https://github.com/circa10a/postk8s/workflows/deploy/badge.svg)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/circa10a/postk8s)
 
-### Prerequisites
-- go version v1.24.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+<img width="40%" src="docs/assets/mail-gopher.png" align="right"/>
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+- [postk8s](#postk8s)
+  - [Example spec](#example-spec)
+  - [Install](#Install)
+    - [Kubectl](#kubectl)
+  - [Configuration Options](#configuration-options)
+  - [Development](#development)
 
-```sh
-make docker-build docker-push IMG=<some-registry>/postk8s:tag
+### Example spec
+
+```yaml
+apiVersion: mailform.circa10a.github.io/v1alpha1
+kind: Mail
+metadata:
+  name: mail-sample
+  annotations:
+    # Optionally skip cancelling orders on delete
+    mailform.circa10a.github.io/skip-cancellation-on-delete: false
+spec:
+  message: "Hello, this is a test mail sent via PostK8s!"
+  service: USPS_STANDARD
+  url: https://pdfobject.com/pdf/sample.pdf
+  from:
+    address1: 123 Sender St
+    address2: Suite 100
+    city: Senderville
+    country: US
+    name: Sender Name
+    organization: Acme Sender
+    postcode: "94016"
+    state: CA
+  to:
+    address1: 456 Recipient Ave
+    address2: Apt 4B
+    city: Receivertown
+    country: US
+    name: Recipient Name
+    organization: Acme Recipient
+    postcode: "10001"
+    state: NY
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+### Install
 
-**Install the CRDs into the cluster:**
+#### Kubectl
 
-```sh
-make install
+> [!IMPORTANT]
+> The `MAILFORM_API_TOKEN` environment variable will need to be updated in the `postk8s-controller-manager` deployment in the `postk8s-system` namespace.
+
+```console
+kubectl apply -f https://raw.githubusercontent.com/circa10a/postk8s/main/deploy/install.yaml
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+### Configuration options
 
-```sh
-make deploy IMG=<some-registry>/postk8s:tag
+```console
+  -enable-http2
+        If set, HTTP/2 will be enabled for the metrics and webhook servers
+  -health-probe-bind-address string
+        The address the probe endpoint binds to. (default ":8081")
+  -kubeconfig string
+        Paths to a kubeconfig. Only required if out-of-cluster.
+  -leader-elect
+        Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
+  -mailform-api-token string
+        Mailform API token.Defaults to 'MAILFORM_API_TOKEN' environment variable. (default "")
+  -metrics-bind-address string
+        The address the metrics endpoint binds to. Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service. (default "0")
+  -metrics-cert-key string
+        The name of the metrics server key file. (default "tls.key")
+  -metrics-cert-name string
+        The name of the metrics server certificate file. (default "tls.crt")
+  -metrics-cert-path string
+        The directory that contains the metrics server certificate.
+  -metrics-secure
+        If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead. (default true)
+  -sync-interval string
+        Interval to check for mail updates.Defaults to '12h'. (default "12h")
+  -webhook-cert-key string
+        The name of the webhook key file. (default "tls.key")
+  -webhook-cert-name string
+        The name of the webhook certificate file. (default "tls.crt")
+  -webhook-cert-path string
+        The directory that contains the webhook certificate.
+  -zap-devel
+        Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
+  -zap-encoder value
+        Zap log encoding (one of 'json' or 'console')
+  -zap-log-level value
+        Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+  -zap-stacktrace-level value
+        Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
+  -zap-time-encoding value
+        Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+### Development
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+For local development, simply have your kubernetes context set for a cluster, clone, and run:
 
-```sh
-kubectl apply -k config/samples/
+```console
+export MAILFORM_API_TOKEN="<token>"
+make local
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+#### Install a sample mail resource
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
+```console
+make sample
 ```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/postk8s:tag
-```
-
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/postk8s/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-kubebuilder edit --plugins=helm/v1-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
-## License
-
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-

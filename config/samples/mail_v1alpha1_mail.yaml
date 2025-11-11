@@ -1,9 +1,0 @@
-apiVersion: mail.circa10a.github.io/v1alpha1
-kind: Mail
-metadata:
-  labels:
-    app.kubernetes.io/name: postk8s
-    app.kubernetes.io/managed-by: kustomize
-  name: mail-sample
-spec:
-  # TODO(user): Add fields here
