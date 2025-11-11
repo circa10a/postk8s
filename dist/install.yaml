@@ -1,0 +1,543 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+    control-plane: controller-manager
+  name: postk8s-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: mails.mailform.circa10a.github.io
+spec:
+  group: mailform.circa10a.github.io
+  names:
+    kind: Mail
+    listKind: MailList
+    plural: mails
+    singular: mail
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Mail is the Schema for the mails API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of Mail
+            properties:
+              color:
+                type: boolean
+              company:
+                type: string
+              customerReference:
+                type: string
+              filePath:
+                type: string
+              flat:
+                type: boolean
+              from:
+                description: Address defines the fields required to send Mail
+                properties:
+                  address1:
+                    type: string
+                  address2:
+                    type: string
+                  city:
+                    type: string
+                  country:
+                    type: string
+                  name:
+                    type: string
+                  organization:
+                    type: string
+                  postcode:
+                    type: string
+                  state:
+                    type: string
+                required:
+                - address1
+                - city
+                - country
+                - name
+                - postcode
+                - state
+                type: object
+              message:
+                type: string
+              service:
+                type: string
+              simplex:
+                type: boolean
+              stamp:
+                type: boolean
+              to:
+                description: Address defines the fields required to send Mail
+                properties:
+                  address1:
+                    type: string
+                  address2:
+                    type: string
+                  city:
+                    type: string
+                  country:
+                    type: string
+                  name:
+                    type: string
+                  organization:
+                    type: string
+                  postcode:
+                    type: string
+                  state:
+                    type: string
+                required:
+                - address1
+                - city
+                - country
+                - name
+                - postcode
+                - state
+                type: object
+              url:
+                type: string
+              webhook:
+                type: string
+            required:
+            - from
+            - service
+            - to
+            type: object
+          status:
+            description: status defines the observed state of Mail
+            properties:
+              cancellationReason:
+                type: string
+              cancelled:
+                format: date-time
+                type: string
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              created:
+                format: date-time
+                type: string
+              id:
+                type: string
+              modified:
+                format: date-time
+                type: string
+              sent:
+                type: boolean
+              state:
+                type: string
+              total:
+                type: integer
+              valid:
+                type: boolean
+            required:
+            - sent
+            - state
+            - valid
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-controller-manager
+  namespace: postk8s-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-leader-election-role
+  namespace: postk8s-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-mail-admin-role
+rules:
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails
+  verbs:
+  - '*'
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-mail-editor-role
+rules:
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-mail-viewer-role
+rules:
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - mail.circa10a.github.io
+  resources:
+  - mails/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: postk8s-manager-role
+rules:
+- apiGroups:
+  - mailform.circa10a.github.io
+  resources:
+  - mails
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mailform.circa10a.github.io
+  resources:
+  - mails/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - mailform.circa10a.github.io
+  resources:
+  - mails/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: postk8s-metrics-auth-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: postk8s-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-leader-election-rolebinding
+  namespace: postk8s-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: postk8s-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: postk8s-controller-manager
+  namespace: postk8s-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+  name: postk8s-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: postk8s-manager-role
+subjects:
+- kind: ServiceAccount
+  name: postk8s-controller-manager
+  namespace: postk8s-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: postk8s-metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: postk8s-metrics-auth-role
+subjects:
+- kind: ServiceAccount
+  name: postk8s-controller-manager
+  namespace: postk8s-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+    control-plane: controller-manager
+  name: postk8s-controller-manager-metrics-service
+  namespace: postk8s-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: postk8s
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: postk8s
+    control-plane: controller-manager
+  name: postk8s-controller-manager
+  namespace: postk8s-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postk8s
+      control-plane: controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app.kubernetes.io/name: postk8s
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --metrics-bind-address=:8443
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --sync-interval=12h
+        command:
+        - /manager
+        env:
+        - name: MAILFORM_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mailform-api-token
+              key: token
+        image: circa10a/postk8s:latest
+        imagePullPolicy: Never
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        ports: []
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts: []
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: postk8s-controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes: []

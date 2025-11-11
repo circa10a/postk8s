@@ -1,119 +1,75 @@
-# postk8s
-// TODO(user): Add simple overview of use/purpose
+# 📬 postk8s
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A simple kubernetes operator to send physical mail via [mailform.io](https://www.mailform.io/)
 
-## Getting Started
+![Build Status](https://github.com/circa10a/postk8s/workflows/deploy/badge.svg)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/circa10a/postk8s)
 
-### Prerequisites
-- go version v1.24.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+<img width="40%" src="docs/assets/mail-gopher.png" align="right"/>
 
-### To Deploy on the cluster
+- [postk8s](#postk8s)
+  - [Example spec](#example-spec)
+  - [Install](#Install)
+    - [Kubectl](#kubectl)
+  - [Development](#development)
 
-**Build and push your image to the location specified by `IMG`:**
+### Example spec
 
-```sh
-make docker-build docker-push IMG=circa10a/postk8s
+```yaml
+apiVersion: mailform.circa10a.github.io/v1alpha1
+kind: Mail
+metadata:
+  labels:
+    app.kubernetes.io/name: postk8s
+    app.kubernetes.io/managed-by: kustomize
+  name: mail-sample
+spec:
+  message: "Hello, this is a test mail sent via PostK8s!"
+  service: USPS_PRIORITY
+  url: https://pdfobject.com/pdf/sample.pdf
+  from:
+    address1: 123 Sender St
+    address2: Suite 100
+    city: Senderville
+    country: US
+    name: Sender Name
+    organization: Acme Sender
+    postcode: "94016"
+    state: CA
+  to:
+    address1: 456 Recipient Ave
+    address2: Apt 4B
+    city: Receivertown
+    country: US
+    name: Recipient Name
+    organization: Acme Recipient
+    postcode: "10001"
+    state: NY
+```
+### Install
+
+#### Kubectl
+
+```console
+# Create a secret containing your Mailform API token
+$ kubectl create secret generic mailform-api-token \
+  --namespace postk8s-system \
+  --from-literal=token=<your-mailform-api-token>
+# Install
+$ kubectl apply -f https://raw.githubusercontent.com/circa10a/postk8s/main/dist/install.yaml
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+### Development
 
-**Install the CRDs into the cluster:**
+For local development, simply have your kubernetes context set for a cluster, clone, and run:
 
-```sh
-make install
+```console
+export MAILFORM_API_TOKEN="<token>"
+$ make local
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+#### Install a sample mail resource
 
-```sh
-make deploy IMG=circa10a/postk8s
+```console
+$ make sample
 ```
-
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
-
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
-```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/postk8s:tag
-```
-
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/postk8s/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-kubebuilder edit --plugins=helm/v1-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)

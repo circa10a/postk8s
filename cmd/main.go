@@ -56,8 +56,8 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&mailformAPIToken, "mailform-api-token", getEnv(mailformApiTokenEnvVar, ""),
 		fmt.Sprintf("Mailform API token."+"Defaults to '%s' environment variable.", mailformApiTokenEnvVar))
-	flag.StringVar(&syncInterval, "sync-interval", getEnv(mailformSyncIntervalEnvVar, "10s"),
-		"Interval to check for mail updates."+"Defaults to '10s'.")
+	flag.StringVar(&syncInterval, "sync-interval", getEnv(mailformSyncIntervalEnvVar, "12h"),
+		"Interval to check for mail updates."+"Defaults to '12h'.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
