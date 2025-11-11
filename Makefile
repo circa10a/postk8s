@@ -182,12 +182,13 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		echo "Error: envsubst is required but not installed. Please install gettext package."; \
 		exit 1; \
 	}
+	$(KUBECTL) config set-context --current --namespace=postk8s-system
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/default | envsubst | $(KUBECTL) apply -f -
-	@deploys=$$(kubectl get deployments --no-headers | tail -n1 | awk '{print $$1}'); \
+	@deploys=$$($(KUBECTL) get deployments --no-headers | tail -n1 | awk '{print $$1}'); \
 	if [ -n "$$deploys" ]; then \
 		for deploy in $$deploys; do \
-			kubectl rollout restart deployment/$$deploy; \
+			$(KUBECTL) rollout restart deployment/$$deploy; \
 		done; \
 	else \
 		echo "No deployments found."; \

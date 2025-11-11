@@ -1,6 +1,6 @@
 # 📬 postk8s
 
-A simple kubernetes operator to send physical mail via [mailform.io](https://www.mailform.io/)
+A simple kubernetes operator to manage physical mail via [mailform.io](https://www.mailform.io/)
 
 ![Build Status](https://github.com/circa10a/postk8s/workflows/deploy/badge.svg)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/circa10a/postk8s)
@@ -19,6 +19,9 @@ A simple kubernetes operator to send physical mail via [mailform.io](https://www
 apiVersion: mailform.circa10a.github.io/v1alpha1
 kind: Mail
 metadata:
+  annotations:
+    # Optionally skip cancelling orders on delete
+    mailform.circa10a.github.io/skip-cancellation-on-delete: false
   labels:
     app.kubernetes.io/name: postk8s
     app.kubernetes.io/managed-by: kustomize
@@ -50,12 +53,10 @@ spec:
 
 #### Kubectl
 
+> [!IMPORTANT]
+> The `MAILFORM_API_TOKEN` environment variable will need to be updated in the `postk8s-controller-manager` deployment.
+
 ```console
-# Create a secret containing your Mailform API token
-$ kubectl create secret generic mailform-api-token \
-  --namespace postk8s-system \
-  --from-literal=token=<your-mailform-api-token>
-# Install
 $ kubectl apply -f https://raw.githubusercontent.com/circa10a/postk8s/main/dist/install.yaml
 ```
 

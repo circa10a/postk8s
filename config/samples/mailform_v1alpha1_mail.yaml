@@ -1,13 +1,15 @@
 apiVersion: mailform.circa10a.github.io/v1alpha1
 kind: Mail
 metadata:
+  annotations:
+    mailform.circa10a.github.io/skip-cancellation-on-delete: "true"
   labels:
     app.kubernetes.io/name: postk8s
     app.kubernetes.io/managed-by: kustomize
   name: mail-sample
 spec:
   message: "Hello, this is a test mail sent via PostK8s!"
-  service: USPS_PRIORITY
+  service: USPS_STANDARD
   url: https://pdfobject.com/pdf/sample.pdf
   from:
     address1: 123 Sender St

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -22,6 +24,7 @@ import (
 type MailformIface interface {
 	CreateOrder(o mailform.OrderInput) (*mailform.Order, error)
 	GetOrder(o string) (*mailform.Order, error)
+	CancelOrder(o string) error
 }
 
 // MailReconciler reconciles a Mail object
@@ -36,6 +39,10 @@ type MailReconciler struct {
 const (
 	// typeValidationMail represents the status of the Mail fuilfillment
 	typeFulfillmentMail = "Fulfillment"
+	// Finalizer for ensuring safe to delete by validated mail was sent/cancelled
+	mailSentOrCancelledFinalizerName = "mailform.circa10a.github.io/mail-sent-or-cancelled-finalizer"
+	// This is our exception annotation to override the finalizer so mail can be deleted without talking to mailform.
+	skipCancellationOnDeleteAnnotation = "mailform.circa10a.github.io/skip-cancellation-on-delete"
 )
 
 // +kubebuilder:rbac:groups=mailform.circa10a.github.io,resources=mails,verbs=get;list;watch;create;update;patch;delete
@@ -54,6 +61,22 @@ func (r *MailReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
+	}
+
+	// Add finalizer for ensuring mail was sent or cancelled.
+	err = r.ensureMailSentOrCancelledFinalizer(ctx, mail)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Ensure finalizers are met
+	done, err := r.handleDeletion(ctx, mail)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if done {
+		return ctrl.Result{}, nil
 	}
 
 	// Nothing to do if mail is already sent or cancelled
@@ -133,6 +156,67 @@ func (r *MailReconciler) loadMail(ctx context.Context, key types.NamespacedName)
 	return mail, nil
 }
 
+// ensureMailSentOrCancelledFinalizer adds the finalizer responsible for not allowing delete until sent/cancelled.
+func (r *MailReconciler) ensureMailSentOrCancelledFinalizer(ctx context.Context, mail *mailformv1alpha1.Mail) error {
+	if mail.DeletionTimestamp.IsZero() && !controllerutil.ContainsFinalizer(mail, mailSentOrCancelledFinalizerName) {
+		controllerutil.AddFinalizer(mail, mailSentOrCancelledFinalizerName)
+		return r.Update(ctx, mail)
+	}
+
+	return nil
+}
+
+// Ensure finalizer conditions are met and can be deleted
+func (r *MailReconciler) handleDeletion(ctx context.Context, mail *mailformv1alpha1.Mail) (bool, error) {
+	log := logf.FromContext(ctx)
+
+	if mail.DeletionTimestamp.IsZero() {
+		return false, nil
+	}
+
+	if controllerutil.ContainsFinalizer(mail, mailSentOrCancelledFinalizerName) {
+		// Check for skip override
+		val := mail.Annotations[skipCancellationOnDeleteAnnotation]
+		skip, _ := strconv.ParseBool(val)
+		if skip {
+			log.Info("skip-cancellation annotation present, skipping cancellation for", "orderID", mail.Status.ID, "name", mail.Name)
+			controllerutil.RemoveFinalizer(mail, mailSentOrCancelledFinalizerName)
+			return true, r.Update(ctx, mail)
+		}
+
+		// Fetch latest state from Mailform if there is an order ID
+		order := &mailform.Order{}
+		var err error
+		if mail.Status.ID != "" {
+			order, err = r.fetchOrder(mail.Status.ID)
+			if err != nil {
+				log.Error(err, "failed to fetch order for deletion check", "orderID", mail.Status.ID, "name", mail.Name)
+				return true, err
+			}
+		}
+
+		// Only cancel if not already sent/cancelled
+		if order == nil || (order.Data.State != mailform.StatusFulfilled && order.Data.State != mailform.StatusCancelled) {
+			if mail.Status.ID != "" {
+				err := r.cancelOrder(mail.Status.ID)
+				if err != nil {
+					log.Error(err, "failed to cancel order", "orderID", mail.Status.ID, "name", mail.Name)
+					return true, err
+				}
+				log.Info("order cancelled", "orderID", mail.Status.ID, "name", mail.Name)
+			}
+		}
+
+		// Remove finalizer after cancelling or if already sent
+		controllerutil.RemoveFinalizer(mail, mailSentOrCancelledFinalizerName)
+		if err := r.Update(ctx, mail); err != nil {
+			return true, err
+		}
+	}
+
+	return true, nil
+}
+
 // buildOrderInput builds the external API order input from the Mail spec.
 func (r *MailReconciler) buildOrderInput(mail *mailformv1alpha1.Mail) mailform.OrderInput {
 	return mailform.OrderInput{
@@ -182,9 +266,14 @@ func (r *MailReconciler) createOrder(ctx context.Context, mail *mailformv1alpha1
 	return order.Data.ID, nil
 }
 
-// fetchOrder retrieves the order from the external API.
+// fetchOrder retrieves the order via the external API.
 func (r *MailReconciler) fetchOrder(orderID string) (*mailform.Order, error) {
 	return r.MailformClient.GetOrder(orderID)
+}
+
+// cancelOrder cancels the order via the external API.
+func (r *MailReconciler) cancelOrder(orderID string) error {
+	return r.MailformClient.CancelOrder(orderID)
 }
 
 // updateStatusFromOrder maps the external order into Mail.Status and persists it.

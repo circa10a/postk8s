@@ -21,7 +21,7 @@ type mockMailformClient struct {
 	mockErr error
 }
 
-// CreateOrder is for creating mock orders. Will return mockErr if not nill
+// CreateOrder is for creating mock orders. Will return mockErr if not nil
 func (m mockMailformClient) CreateOrder(o mailform.OrderInput) (*mailform.Order, error) {
 	if m.mockErr != nil {
 		return m.output, m.mockErr
@@ -30,13 +30,22 @@ func (m mockMailformClient) CreateOrder(o mailform.OrderInput) (*mailform.Order,
 	return m.output, nil
 }
 
-// GetOrder is for fetching mock orders. Will return mockErr if not nill
+// GetOrder is for fetching mock orders. Will return mockErr if not nil
 func (m mockMailformClient) GetOrder(o string) (*mailform.Order, error) {
 	if m.mockErr != nil {
 		return m.output, m.mockErr
 	}
 
 	return m.output, nil
+}
+
+// CancelOrder is for cancelling mock orders. Will return mockErr if not nil
+func (m mockMailformClient) CancelOrder(o string) error {
+	if m.mockErr != nil {
+		return m.mockErr
+	}
+
+	return nil
 }
 
 const (
@@ -65,8 +74,35 @@ var _ = Describe("Mail Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
+			By("Ensuring allow-delete annotation is present before cleanup")
+
+			if resource.Annotations == nil {
+				resource.Annotations = make(map[string]string)
+			}
+			resource.Annotations[skipCancellationOnDeleteAnnotation] = "true"
+
+			// Update the resource with the new annotation before deletion
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			// Trigger the controller to handle deletion and remove finalizer
+			controller := &MailReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
 			By("Cleanup the specific resource instance Mail")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			// Reconcile deletion
+			_, err = controller.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Waiting for the Mail resource to be fully deleted")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, resource)
+				return errors.IsNotFound(err)
+			}, 1*time.Second, 500*time.Millisecond).Should(BeTrue(), "Mail resource should be fully deleted")
+
 		})
 
 		It("should fail if no to/from addresses are provided", func() {
@@ -245,6 +281,7 @@ var _ = Describe("Mail Controller", func() {
 			Expect(fetched.Status.ID).To(Equal("order-123"))
 			Expect(fetched.Status.Valid).To(BeTrue())
 			Expect(fetched.Status.Sent).To(BeFalse())
+			Expect(fetched.GetFinalizers()).To(ContainElement(mailSentOrCancelledFinalizerName))
 		})
 
 		It("should update sent status when external order is fulfilled", func() {
@@ -428,5 +465,115 @@ var _ = Describe("Mail Controller", func() {
 			Expect(fetched.Status.Sent).To(BeTrue())
 			Expect(fetched.Status.State).To(Equal(mailform.StatusFulfilled))
 		})
+
+		It("should remove finalizer when skip-cancellation annotation is set", func() {
+			ctx := context.Background()
+			key := types.NamespacedName{Name: resourceName, Namespace: namespaceName}
+
+			resource := &mailformv1alpha1.Mail{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       resourceName,
+					Namespace:  namespaceName,
+					Finalizers: []string{mailSentOrCancelledFinalizerName},
+					Annotations: map[string]string{
+						skipCancellationOnDeleteAnnotation: "true",
+					},
+				},
+				Spec: mailformv1alpha1.MailSpec{
+					Service: "USPS_PRIORITY",
+					URL:     "https://pdfobject.com/pdf/sample.pdf",
+					To: &mailformv1alpha1.Address{
+						Name:     "to",
+						Address1: "a",
+						City:     "b",
+						Country:  "US",
+						Postcode: "12345",
+						State:    "CA",
+					},
+					From: &mailformv1alpha1.Address{
+						Name:     "from",
+						Address1: "a",
+						City:     "b",
+						Country:  "US",
+						Postcode: "54321",
+						State:    "CA",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			controller := &MailReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			result, err := controller.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(time.Duration(0)))
+
+			fetched := &mailformv1alpha1.Mail{}
+			err = k8sClient.Get(ctx, key, fetched)
+			Expect(errors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("should cancel the order and remove finalizer if mail not sent and not cancelled", func() {
+			ctx := context.Background()
+			key := types.NamespacedName{Name: resourceName, Namespace: namespaceName}
+
+			resource := &mailformv1alpha1.Mail{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       resourceName,
+					Namespace:  namespaceName,
+					Finalizers: []string{mailSentOrCancelledFinalizerName},
+				},
+				Spec: mailformv1alpha1.MailSpec{
+					Service: "USPS_PRIORITY",
+					URL:     "https://pdfobject.com/pdf/sample.pdf",
+					To: &mailformv1alpha1.Address{
+						Name:     "to",
+						Address1: "a",
+						City:     "b",
+						Country:  "US",
+						Postcode: "12345",
+						State:    "CA",
+					},
+					From: &mailformv1alpha1.Address{
+						Name:     "from",
+						Address1: "a",
+						City:     "b",
+						Country:  "US",
+						Postcode: "54321",
+						State:    "CA",
+					},
+				},
+				Status: mailformv1alpha1.MailStatus{
+					ID:    "order-123",
+					Sent:  false,
+					State: mailform.StatusAwaitingFulfillment,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			controller := &MailReconciler{
+				Client:         k8sClient,
+				Scheme:         k8sClient.Scheme(),
+				MailformClient: mockMailformClient{},
+			}
+
+			// Reconcile deletion
+			result, err := controller.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(time.Duration(0)))
+
+			// Ensure finalizer was removed
+			fetched := &mailformv1alpha1.Mail{}
+			err = k8sClient.Get(ctx, key, fetched)
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "Mail resource should be deleted")
+		})
+
 	})
 })

@@ -500,10 +500,7 @@ spec:
         - /manager
         env:
         - name: MAILFORM_API_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: mailform-api-token
-              key: token
+          value: ""
         image: circa10a/postk8s:latest
         imagePullPolicy: Never
         livenessProbe:
