@@ -502,7 +502,7 @@ spec:
         - name: MAILFORM_API_TOKEN
           value: ""
         image: circa10a/postk8s:latest
-        imagePullPolicy: Never
+        imagePullPolicy: Always
         livenessProbe:
           httpGet:
             path: /healthz
