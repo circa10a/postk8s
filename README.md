@@ -23,7 +23,7 @@ metadata:
   name: mail-sample
   annotations:
     # Optionally skip cancelling orders on delete
-    mailform.circa10a.github.io/skip-cancellation-on-delete: false
+    mailform.circa10a.github.io/skip-cancellation-on-delete: "false"
 spec:
   message: "Hello, this is a test mail sent via PostK8s!"
   service: USPS_STANDARD
