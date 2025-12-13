@@ -11,6 +11,7 @@ A simple kubernetes operator to manage physical mail via [mailform.io](https://w
   - [Example spec](#example-spec)
   - [Install](#Install)
     - [Kubectl](#kubectl)
+    - [Helm](#helm)
   - [Configuration Options](#configuration-options)
   - [Development](#development)
 
@@ -57,6 +58,12 @@ spec:
 
 ```console
 kubectl apply -f https://raw.githubusercontent.com/circa10a/postk8s/main/deploy/install.yaml
+```
+
+#### Helm
+
+```console
+helm install postk8s oci://registry-1.docker.io/circa10a/postk8s
 ```
 
 ### Configuration options

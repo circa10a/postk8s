@@ -28,3 +28,4 @@ go.work
 
 # Misc
 *.tar
+*.tgz

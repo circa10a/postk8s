@@ -42,13 +42,20 @@ all: build
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-##@ Development
+### Development
 
 # Build docker image, load it locally, generate/install CRDs, kubectl apply
 local: docker-local install deploy
 
 sample:
 	$(KUBECTL) apply -k config/samples/
+
+helm-chart:
+	kubebuilder edit --plugins=helm/v2-alpha --manifests deploy/install.yaml --output-dir deploy/
+
+pkg-helm-chart:
+# Strip "v" from the version tag to ensure we don't overwrite the docker tag
+	helm package ./deploy/chart -d dist --version $(patsubst v%,%,$(VERSION)) --app-version $(VERSION)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.

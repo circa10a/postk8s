@@ -8,6 +8,9 @@ layout:
 - go.kubebuilder.io/v4
 plugins:
   helm.kubebuilder.io/v1-alpha: {}
+  helm.kubebuilder.io/v2-alpha:
+    manifests: deploy/install.yaml
+    output: deploy/
 projectName: postk8s
 repo: github.com/circa10a/postk8s
 resources:
