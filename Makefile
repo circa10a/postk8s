@@ -50,6 +50,13 @@ local: docker-local install deploy
 sample:
 	$(KUBECTL) apply -k config/samples/
 
+helm-chart:
+	kubebuilder edit --plugins=helm/v2-alpha --manifests deploy/install.yaml --output-dir deploy/
+
+pkg-helm-chart:
+# Strip "v" from the version tag to ensure we don't overwrite the docker tag
+	helm package ./deploy/chart -d dist --version $(patsubst v%,%,$(VERSION)) --app-version $(VERSION)
+
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases

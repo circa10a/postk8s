@@ -1,0 +1,55 @@
+name: Test Chart
+
+on:
+  pull_request:
+
+env:
+  CHART_DIR: ./deploy/chart
+
+jobs:
+  test-e2e:
+    name: Run on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+
+      - name: Install the latest version of kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-$(go env GOARCH)
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Verify kind installation
+        run: kind version
+
+      - name: Create kind cluster
+        run: kind create cluster
+
+      - name: Prepare ${{ github.event.repository.name }}
+        run: |
+          go mod tidy
+          make docker-build IMG=${{ github.event.repository.name }}:v0.1.0
+          kind load docker-image ${{ github.event.repository.name }}:v0.1.0
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
+
+      - name: Verify Helm installation
+        run: helm version
+
+      - name: Lint Helm Chart
+        run: |
+          helm lint $CHART_DIR
+
+      - name: Install Helm chart for project
+        run: |
+          helm install ${{ github.event.repository.name }} $CHART_DIR --create-namespace --namespace ${{ github.event.repository.name }}-system
+
+      - name: Check Helm release status
+        run: |
+          helm status ${{ github.event.repository.name }} --namespace ${{ github.event.repository.name }}-system
